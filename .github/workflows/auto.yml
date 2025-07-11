@@ -1,1 +1,51 @@
+name: Export Garmin Activities
 
+# 每天 UTC 0 点（即北京时间 8 点）跑一次
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      # 取回代码
+      - uses: actions/checkout@v3
+
+      # 安装 Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # 恢复 Garmin token 到 ~/.garminconnect
+      - name: Restore Garmin tokens
+        run: |
+          mkdir -p ~/.garminconnect
+          echo "${{ secrets.GARMIN_OAUTH1 }}" > ~/.garminconnect/oauth1_token.json
+          echo "${{ secrets.GARMIN_OAUTH2 }}" > ~/.garminconnect/oauth2_token.json
+
+      # 安装脚本依赖
+      - name: Install dependencies
+        run: pip install garminconnect httpx cloudscraper
+
+      # 运行 exporter 脚本
+      - name: Run Garmin exporter
+        run: |
+          python path/to/update.py \
+            --username "${{ secrets.GARMIN_USERNAME }}" \
+            # 脚本会首先尝试使用 token，如果 token 有效就不会读取密码
+          # 如果你想强制传密码，也可以加 --password "${{ secrets.GARMIN_PASSWORD }}"
+
+      # 可选：把更新后的 CSV 提交回仓库
+      - name: Commit updated CSV
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/components/activities.csv
+          git diff --quiet && echo "No changes to commit" || git commit -m "chore: update activities.csv"
+          git push
+        env:
+          # 为了 push，你需要设置一个 PAT（Personal Access Token）到 secrets.PAT
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
