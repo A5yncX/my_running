@@ -1,6 +1,6 @@
 name: Export Garmin Activities
 
-# Run every day at UTC 00:00 (08:00 Beijing time)
+# 每天 UTC 0 点（即北京时间 8 点）跑一次
 on:
   schedule:
     - cron: '0 0 * * *'
@@ -30,13 +30,11 @@ jobs:
       - name: Install dependencies
         run: pip install garminconnect httpx cloudscraper
 
-      # Run the exporter script
+      # Run the exporter script via Python
       - name: Run Garmin exporter
         run: |
-          running/garminconnect_exporter.py \
+          python running/garminconnect_exporter.py \
             --username "${{ secrets.GARMIN_USERNAME }}"
-          # If you ever need to force a password login, you can add:
-          #   --password "${{ secrets.GARMIN_PASSWORD }}"
 
       # Commit and push updated CSV back to the repo
       - name: Commit updated CSV
@@ -50,7 +48,6 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: update activities.csv"
-            # Use the PAT to push back to GitHub
             git remote set-url origin https://x-access-token:${PAT}@github.com/${{ github.repository }}.git
             git push
           fi
