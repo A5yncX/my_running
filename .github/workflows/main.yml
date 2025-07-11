@@ -19,12 +19,12 @@ jobs:
         with:
           python-version: '3.x'
 
-      # 恢复 Garmin token 到 ~/.garminconnect 目录，使用 printf 保留原始内容
+      # 恢复 Garmin token 到 ~/.garminconnect 目录（Base64 解码）
       - name: Restore Garmin tokens
         run: |
           mkdir -p ~/.garminconnect
-          printf "%s\n" "${{ secrets.GARMIN_OAUTH1 }}" > ~/.garminconnect/oauth1_token.json
-          printf "%s\n" "${{ secrets.GARMIN_OAUTH2 }}" > ~/.garminconnect/oauth2_token.json
+          echo "${{ secrets.GARMIN_OAUTH1_B64 }}" | base64 -d > ~/.garminconnect/oauth1_token.json
+          echo "${{ secrets.GARMIN_OAUTH2_B64 }}" | base64 -d > ~/.garminconnect/oauth2_token.json
 
       # 安装脚本依赖
       - name: Install dependencies
@@ -49,6 +49,7 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: update activities.csv"
+            # 使用 PAT 推送
             git remote set-url origin https://x-access-token:${PAT}@github.com/${{ github.repository }}.git
             git push
           fi
