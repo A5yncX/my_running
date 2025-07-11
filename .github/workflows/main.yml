@@ -10,8 +10,10 @@ jobs:
   export:
     runs-on: ubuntu-latest
     steps:
-      # 检出仓库
+      # 检出仓库并保留 GITHUB_TOKEN 用于后续推送
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: true
 
       # 设置 Python 环境
       - name: Set up Python
@@ -39,8 +41,6 @@ jobs:
 
       # 如果 CSV 有更新，则提交并推送回仓库
       - name: Commit updated CSV
-        env:
-          PAT: ${{ secrets.PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -49,7 +49,5 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: update activities.csv"
-            # 使用 PAT 推送
-            git remote set-url origin https://x-access-token:${PAT}@github.com/${{ github.repository }}.git
             git push
           fi
