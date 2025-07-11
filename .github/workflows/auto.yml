@@ -33,7 +33,7 @@ jobs:
       # Run the exporter script
       - name: Run Garmin exporter
         run: |
-          python path/to/update.py \
+          running/garminconnect_exporter.py \
             --username "${{ secrets.GARMIN_USERNAME }}"
           # If you ever need to force a password login, you can add:
           #   --password "${{ secrets.GARMIN_PASSWORD }}"
