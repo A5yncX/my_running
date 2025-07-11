@@ -1,0 +1,192 @@
+---
+import fs from 'fs';
+
+// Read and parse activities.csv
+const csvPath = new URL('./activities.csv', import.meta.url);
+const text = fs.readFileSync(csvPath, 'utf-8');
+const lines = text.trim().split('\n').filter(line => line.trim());
+const [headerLine, ...dataLines] = lines;
+const headers = headerLine.split(',').map(h => h.trim());
+const records = dataLines.map(line => {
+  const cols = line.split(',').map(c => c.trim());
+  const rec = {};
+  headers.forEach((h, i) => rec[h] = cols[i] ?? '');
+  return rec;
+});
+
+// Accumulate total distance, total steps, and total duration (in minutes)
+let totalDistance = 0;
+let totalSteps = 0;
+let totalDurationMin = 0;
+records.forEach(rec => {
+  totalDistance += parseFloat(rec['Distance (km)']) || 0;
+  totalSteps += parseInt(rec['Steps'], 10) || 0;
+  totalDurationMin += parseFloat(rec['Duration (min)']) || 0;
+});
+const hours = Math.floor(totalDurationMin / 60);
+const minutes = Math.floor(totalDurationMin % 60);
+const formattedDistance = totalDistance.toFixed(2);
+
+// Use build time as the last updated timestamp
+const buildTime = new Date().toLocaleString('en-US');
+---
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: #1d1e23;
+  }
+  #container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    font-family: Inter, sans-serif;
+    color: #e4e0dc;
+  }
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;  /* Vertically center */
+    align-items: center;      /* Horizontally center */
+    position: relative;
+  }
+  /* Main summary text */
+  .sum {
+    font-size: 3rem;
+    text-align: center;
+    margin: 0;
+  }
+  /* "Click to view" button style, smaller font size */
+  #summary {
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    color: #7f8c8d;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  /* Modal overlay, hidden by default */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  /* Show modal */
+  .modal-overlay.show {
+    display: flex;
+  }
+  /* Modal content area */
+  .modal-window {
+    background: #1d1e23;
+    color: #e4e0dc;
+    width: 90%;
+    max-height: 80%;
+    overflow: auto;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  }
+  /* Table styled to match body colors */
+  .activity-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .activity-table th,
+  .activity-table td {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e4e0dc;
+    text-align: center;
+    background-color: #1d1e23;
+    color: #e4e0dc;
+  }
+  .activity-table tbody tr:nth-child(even) {
+    background-color: #1d1e23;
+  }
+  /* Bottom summary text */
+  .summary {
+    position: absolute;
+    bottom: 1rem;
+    width: 100%;
+    text-align: center;
+    font-size: 0.875rem;
+  }
+  /* Page bottom update timestamp */
+  .update {
+    position: absolute;
+    bottom: 1rem;
+    width: 100%;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #7f8c8d;
+  }
+</style>
+
+<div id="container">
+  <main>
+    <div class="sum">
+      Total exercise: {hours}h {minutes}m, {formattedDistance} km, {totalSteps} steps.
+    </div>
+    <div id="summary">
+      Click to view detailed records
+    </div>
+
+    <!-- Modal overlay -->
+    <div class="modal-overlay" id="modal">
+      <div class="modal-window">
+        <table class="activity-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Start Time</th>
+              <th>Distance (km)</th>
+              <th>Steps</th>
+              <th>Duration (min)</th>
+              <th>Heartrate (BPM)</th>
+              <th>Elevation Gain (m)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map(rec => (
+              <tr>
+                <td>{rec['Category']}</td>
+                <td>{rec['Start Time']}</td>
+                <td>{rec['Distance (km)']}</td>
+                <td>{rec['Steps']}</td>
+                <td>{rec['Duration (min)']}</td>
+                <td>{rec['Heartrate (BPM)']}</td>
+                <td>{rec['Elevation Gain (m)']}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="update">
+      Last updated on: {buildTime}
+    </div>
+  </main>
+</div>
+
+<script>
+  const summaryBtn = document.getElementById('summary');
+  const modalEl = document.getElementById('modal');
+
+  summaryBtn.addEventListener('click', () => {
+    modalEl.classList.add('show');
+  });
+
+  modalEl.addEventListener('click', e => {
+    if (e.target === modalEl) {
+      modalEl.classList.remove('show');
+    }
+  });
+</script>
