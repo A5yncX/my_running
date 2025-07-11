@@ -25,8 +25,10 @@ const hours = Math.floor(totalDurationMin / 60);
 const minutes = Math.floor(totalDurationMin % 60);
 const formattedDistance = totalDistance.toFixed(2);
 
-// Use build time as the last updated timestamp
-const buildTime = new Date().toLocaleString('en-US');
+// Use build time as the last updated timestamp in Montreal timezone
+const buildTime = new Date().toLocaleString('en-US', {
+  timeZone: 'America/Montreal'
+});
 ---
 
 <style>
@@ -58,7 +60,7 @@ const buildTime = new Date().toLocaleString('en-US');
     text-align: center;
     margin: 0;
   }
-  /* "Click to view" button style, smaller font size */
+  /* "Click to view" button style */
   #summary {
     margin-top: 0.5rem;
     font-size: 1rem;
@@ -66,22 +68,25 @@ const buildTime = new Date().toLocaleString('en-US');
     text-decoration: underline;
     cursor: pointer;
   }
-  /* Modal overlay, hidden by default */
+  /* Modal overlay with fade animation */
   .modal-overlay {
     position: fixed;
     top: 0; left: 0;
     width: 100vw; height: 100vh;
     background: rgba(0, 0, 0, 0.6);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
     z-index: 100;
   }
-  /* Show modal */
   .modal-overlay.show {
-    display: flex;
+    opacity: 1;
+    pointer-events: auto;
   }
-  /* Modal content area */
+  /* Modal content area with scale & fade animation */
   .modal-window {
     background: #1d1e23;
     color: #e4e0dc;
@@ -91,6 +96,13 @@ const buildTime = new Date().toLocaleString('en-US');
     border-radius: 8px;
     padding: 1rem;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    transform: scale(0.9);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  .modal-overlay.show .modal-window {
+    transform: scale(1);
+    opacity: 1;
   }
   /* Table styled to match body colors */
   .activity-table {
@@ -100,7 +112,6 @@ const buildTime = new Date().toLocaleString('en-US');
   .activity-table th,
   .activity-table td {
     padding: 0.5rem 1rem;
-    /* border: 1px solid #e4e0dc; */
     text-align: center;
     background-color: #1d1e23;
     color: #e4e0dc;
