@@ -1,10 +1,8 @@
 ---
-import fs from 'fs';
+import csvRaw from '../components/activities.csv?raw';
 
-// Read and parse activities.csv
-const csvPath = new URL('./activities.csv', import.meta.url);
-const text = fs.readFileSync(csvPath, 'utf-8');
-const lines = text.trim().split('\n').filter(line => line.trim());
+// Read and parse activities.csv (inlined via Vite `?raw`)
+const lines = csvRaw.trim().split('\n').filter(line => line.trim());
 const [headerLine, ...dataLines] = lines;
 const headers = headerLine.split(',').map(h => h.trim());
 const records = dataLines.map(line => {
@@ -110,15 +108,7 @@ const buildTime = new Date().toLocaleString('en-US');
   .activity-table tbody tr:nth-child(even) {
     background-color: #1d1e23;
   }
-  /* Bottom summary text */
-  .summary {
-    position: absolute;
-    bottom: 1rem;
-    width: 100%;
-    text-align: center;
-    font-size: 0.875rem;
-  }
-  /* Page bottom update timestamp */
+  /* Bottom update timestamp */
   .update {
     position: absolute;
     bottom: 1rem;
