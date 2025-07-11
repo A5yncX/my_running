@@ -1,5 +1,6 @@
 name: Export Garmin Activities
 
+# 每天 UTC 0 点（即北京时间 8 点）运行一次，同时支持手动触发
 on:
   schedule:
     - cron: '0 0 * * *'
@@ -9,28 +10,34 @@ jobs:
   export:
     runs-on: ubuntu-latest
     steps:
+      # 检出仓库
       - uses: actions/checkout@v3
 
+      # 设置 Python 环境
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
+      # 恢复 Garmin token 到 ~/.garminconnect 目录
       - name: Restore Garmin tokens
         run: |
           mkdir -p ~/.garminconnect
-          echo "${{ secrets.GARMIN_OAUTH1 }}" > ~/.garminconnect/oauth1_token.json
-          echo "${{ secrets.GARMIN_OAUTH2 }}" > ~/.garminconnect/oauth2_token.json
+          printf '%s' "${{ secrets.GARMIN_OAUTH1 }}" > ~/.garminconnect/oauth1_token.json
+          printf '%s' "${{ secrets.GARMIN_OAUTH2 }}" > ~/.garminconnect/oauth2_token.json
 
+      # 安装脚本依赖
       - name: Install dependencies
         run: pip install garminconnect httpx cloudscraper
 
+      # 运行 Garmin 导出脚本
       - name: Run Garmin exporter
         run: |
           python running/garminconnect_exporter.py \
             --username "${{ secrets.GARMIN_USERNAME }}" \
             --password "${{ secrets.GARMIN_PASSWORD }}"
 
+      # 如果 CSV 有更新，则提交并推送回仓库
       - name: Commit updated CSV
         env:
           PAT: ${{ secrets.PAT }}
