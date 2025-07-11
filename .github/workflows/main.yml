@@ -1,0 +1,58 @@
+name: Export Garmin Activities
+
+# 每天 UTC 0 点（即北京时间 8 点）运行一次，同时支持手动触发
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      # 检出仓库
+      - uses: actions/checkout@v3
+
+      # 设置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # 恢复 Garmin token 到 ~/.garminconnect 目录，使用 here-doc 保留原始换行
+      - name: Restore Garmin tokens
+        run: |
+          mkdir -p ~/.garminconnect
+          cat << 'EOF' > ~/.garminconnect/oauth1_token.json
+${{ secrets.GARMIN_OAUTH1 }}
+EOF
+          cat << 'EOF' > ~/.garminconnect/oauth2_token.json
+${{ secrets.GARMIN_OAUTH2 }}
+EOF
+
+      # 安装脚本依赖
+      - name: Install dependencies
+        run: pip install garminconnect httpx cloudscraper
+
+      # 运行 Garmin 导出脚本，传入用户名和密码，避免交互式输入
+      - name: Run Garmin exporter
+        run: |
+          python running/garminconnect_exporter.py \
+            --username "${{ secrets.GARMIN_USERNAME }}" \
+            --password "${{ secrets.GARMIN_PASSWORD }}"
+
+      # 如果 CSV 有更新，则提交并推送回仓库
+      - name: Commit updated CSV
+        env:
+          PAT: ${{ secrets.PAT }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/components/activities.csv
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update activities.csv"
+            git remote set-url origin https://x-access-token:${PAT}@github.com/${{ github.repository }}.git
+            git push
+          fi
