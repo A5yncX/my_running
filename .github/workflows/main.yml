@@ -19,22 +19,18 @@ jobs:
         with:
           python-version: '3.x'
 
-      # 恢复 Garmin token 到 ~/.garminconnect 目录，使用 here-doc 保留原始换行
+      # 恢复 Garmin token 到 ~/.garminconnect 目录，使用 printf 保留原始内容
       - name: Restore Garmin tokens
         run: |
           mkdir -p ~/.garminconnect
-          cat << 'EOF' > ~/.garminconnect/oauth1_token.json
-${{ secrets.GARMIN_OAUTH1 }}
-EOF
-          cat << 'EOF' > ~/.garminconnect/oauth2_token.json
-${{ secrets.GARMIN_OAUTH2 }}
-EOF
+          printf "%s\n" "${{ secrets.GARMIN_OAUTH1 }}" > ~/.garminconnect/oauth1_token.json
+          printf "%s\n" "${{ secrets.GARMIN_OAUTH2 }}" > ~/.garminconnect/oauth2_token.json
 
       # 安装脚本依赖
       - name: Install dependencies
         run: pip install garminconnect httpx cloudscraper
 
-      # 运行 Garmin 导出脚本，传入用户名和密码，避免交互式输入
+      # 运行 Garmin 导出脚本，传入用户名和密码
       - name: Run Garmin exporter
         run: |
           python running/garminconnect_exporter.py \
