@@ -9,7 +9,7 @@ Description:
     3. 拉取最近活动列表，遍历每个活动：
        - 从 summaryDTO 获取 averageHR 或 averageHeartRate（Heartrate）
        - 从 summaryDTO 获取 totalElevationGain 或 elevationGain（Elevation Gain）
-    4. 将结果追加到 src/components/activities.csv
+    4. 将结果写入到 src/components/activities.csv，新纪录会插入到最上方
 """
 
 import os
@@ -97,10 +97,12 @@ def main():
     os.makedirs(csv_dir, exist_ok=True)
     csv_file = os.path.join(csv_dir, "activities.csv")
 
+    # 已有记录 ID
     seen = set()
     if os.path.exists(csv_file):
         with open(csv_file, encoding='utf-8') as f:
-            for r in csv.DictReader(f):
+            reader = csv.DictReader(f)
+            for r in reader:
                 seen.add(r["Activity ID"])
 
     # 异步客户端
@@ -110,40 +112,57 @@ def main():
 
     async def fetch_and_write():
         acts = await ag.get_activities(0, args.count)
-        first = not os.path.exists(csv_file)
-        with open(csv_file, 'a', newline='', encoding='utf-8') as f:
-            w = csv.writer(f)
-            if first:
-                w.writerow([
-                    "Activity ID","Category","Start Time",
-                    "Distance (km)","Steps","Duration (min)","Heartrate (BPM)","Elevation Gain (m)"
-                ])
-            for act in acts:
-                aid = str(act["activityId"])
-                if aid in seen:
-                    continue
-                typek = act.get("activityType",{}).get("typeKey","unknown")
-                category = typek.replace('_',' ').title()
-                start = act.get("startTimeLocal","")
-                dist  = round(act.get("distance",0)/1000,2)
-                steps = act.get("steps","N/A") if typek in ["running","walking"] else "N/A"
-                dur   = round(act.get("duration",0)/60,2)
+        new_rows = []
+        for act in acts:
+            aid = str(act["activityId"])
+            if aid in seen:
+                continue
 
-                # 获取 summary
-                sumj = await ag.get_activity_summary(aid)
-                dto  = sumj.get("summaryDTO", {})
-                # 优先 averageHR，再 averageHeartRate
-                hr_val = dto.get("averageHR") or dto.get("averageHeartRate")
-                hr = hr_val if hr_val is not None else "N/A"
-                # 海拔增益
-                eg = dto.get("totalElevationGain") or dto.get("elevationGain") or "N/A"
+            typek = act.get("activityType", {}).get("typeKey", "unknown")
+            category = typek.replace('_',' ').title()
+            start = act.get("startTimeLocal", "")
+            dist  = round(act.get("distance", 0) / 1000, 2)
+            steps = act.get("steps", "N/A") if typek in ["running","walking"] else "N/A"
+            dur   = round(act.get("duration", 0) / 60, 2)
 
-                print(f"Export {aid}: hr={hr}, gain={eg}")
-                w.writerow([aid, category, start, dist, steps, dur, hr, eg])
+            # 获取 summaryDTO
+            sumj = await ag.get_activity_summary(aid)
+            dto  = sumj.get("summaryDTO", {})
+            hr_val = dto.get("averageHR") or dto.get("averageHeartRate")
+            hr = hr_val if hr_val is not None else "N/A"
+            eg = dto.get("totalElevationGain") or dto.get("elevationGain") or "N/A"
+
+            print(f"New activity {aid}: hr={hr}, gain={eg}")
+            new_rows.append([
+                aid, category, start, dist, steps, dur, hr, eg
+            ])
+
+        # 如果有新记录，则把它们写到最上方
+        if new_rows:
+            # 读取旧数据
+            old_rows = []
+            header = ["Activity ID","Category","Start Time",
+                      "Distance (km)","Steps","Duration (min)",
+                      "Heartrate (BPM)","Elevation Gain (m)"]
+            if os.path.exists(csv_file):
+                with open(csv_file, 'r', encoding='utf-8', newline='') as f:
+                    reader = csv.reader(f)
+                    existing_header = next(reader, None)
+                    for row in reader:
+                        old_rows.append(row)
+
+            # 将新 + 旧 写回文件（覆盖）
+            with open(csv_file, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(header)
+                for row in new_rows + old_rows:
+                    writer.writerow(row)
+
         await ag.close()
 
     asyncio.run(fetch_and_write())
     print("✅ 完成，文件：", csv_file)
+
 
 if __name__ == "__main__":
     main()
