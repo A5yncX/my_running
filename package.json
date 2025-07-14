@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "start": "python3 running/garminconnect_exporter.py --username asyncx0806@gmail.com --password Hh018617. && astro dev",
+    "start": "python3 running/garminconnect_exporter.py && astro dev",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"
